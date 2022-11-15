@@ -52,13 +52,13 @@ pub fn to_book(session: &mut Session, path: &PathBuf) -> Option<concrete::Book> 
     Some(concrete_book)
 }
 
-pub fn erase_book(session: &mut Session, path: &PathBuf) -> Option<desugared::Book> {
+pub fn erase_book(session: &mut Session, path: &PathBuf, entrypoint: &[String]) -> Option<desugared::Book> {
     let concrete_book = to_book(session, path)?;
     let desugared_book = desugar::desugar_book(session.diagnostic_sender.clone(), &concrete_book)?;
     erasure::erase_book(
         &desugared_book,
         session.diagnostic_sender.clone(),
-        HashSet::from_iter(vec!["Main".to_string()]),
+        HashSet::from_iter(entrypoint.to_owned()),
     )
 }
 
@@ -79,8 +79,19 @@ pub fn check_erasure_book(session: &mut Session, path: &PathBuf) -> Option<desug
 }
 
 pub fn compile_book_to_hvm(session: &mut Session, path: &PathBuf) -> Option<backend::File> {
-    erase_book(session, path).map(kind_target_hvm::compile_book)
+    erase_book(session, path, &["Main".to_string()]).map(kind_target_hvm::compile_book)
 }
+
+// pub fn compile_book_to_kdl(session: &mut Session, path: &PathBuf, namespace: &str) -> Option<backend::File> {
+//     let entry = session.public_names.get(&session.root).unwrap();
+//     let erased_book = erase_book(session, path, entry.iter())?;
+//     let inlined_book = kind_pass::inline::inline_book();
+//     let u120_fixed_book = kind_target_kdl::pass::fix_nums_book();
+//     let flattened_book = kind_pass::flatten::flatten_book();
+//     let hvm_book = kind_tree::hvm::Book::from_desugared(flattened_book);
+//     let linearized_book = kind_pass::linearize::linearize_book();
+//     kind_target_kdl::to_kdl_book(file, namespace)
+// }
 
 pub fn execute_file(file: &backend::File) -> Box<backend::Term> {
     // TODO: Change to from_file when hvm support it
